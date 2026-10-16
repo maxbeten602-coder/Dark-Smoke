@@ -3,6 +3,13 @@ import html
 import logging
 import os
 import sqlite3
+import subprocess
+import sys
+
+try:
+    import aiogram  # noqa: F401
+except ImportError:  # сам ставит библиотеку, если её нет
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "aiogram>=3.7"])
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandStart
@@ -27,10 +34,17 @@ def load_env(path=".env"):
 
 
 load_env()
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-OWNER_IDS = {int(x) for x in os.getenv("OWNER_IDS", "").replace(" ", "").split(",") if x}
-DEFAULT_SELLER = os.getenv("DEFAULT_SELLER", "Cathoks").lstrip("@")
-DB_PATH = os.getenv("DB_PATH", "shop.db")
+# ===== НАСТРОЙКИ: меняйте только здесь =====
+TOKEN_HERE = "8905318418:AAEoxw9Pz0ra215iiu8TtpWb2W1wat8xlTU"  # токен от @BotFather, между кавычками
+OWNER_HERE = "8920532333"         # ID владельца (несколько — через запятую)
+SELLER_HERE = "Cathoks"           # кому ведёт кнопка «Связаться»
+# ===========================================
+BOT_TOKEN = os.getenv("BOT_TOKEN") or TOKEN_HERE
+OWNER_IDS = {int(x) for x in (os.getenv("OWNER_IDS") or OWNER_HERE).replace(" ", "").split(",") if x}
+DEFAULT_SELLER = (os.getenv("DEFAULT_SELLER") or SELLER_HERE).lstrip("@")
+# На Railway при подключённом Volume база лежит на постоянном диске
+_volume = os.getenv("RAILWAY_VOLUME_MOUNT_PATH")
+DB_PATH = os.getenv("DB_PATH") or (os.path.join(_volume, "shop.db") if _volume else "shop.db")
 
 
 # ---------- база данных ----------
@@ -481,8 +495,8 @@ async def admin_del(cb: CallbackQuery, state: FSMContext):
 
 # ---------- запуск ----------
 async def main():
-    if not BOT_TOKEN:
-        raise SystemExit("Укажите BOT_TOKEN в файле .env")
+    if not BOT_TOKEN or "ВСТАВЬ" in BOT_TOKEN:
+        raise SystemExit("Впишите токен в строке TOKEN_HERE в начале bot.py")
     if not OWNER_IDS:
         logging.warning("OWNER_IDS не задан: админов не будет. Укажите свой ID в .env (узнать: /myid)")
     init_db()
